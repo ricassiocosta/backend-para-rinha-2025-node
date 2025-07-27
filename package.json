@@ -1,0 +1,30 @@
+{
+  "name": "backend-para-rinha-2025-node",
+  "version": "0.10.1",
+  "description": "Backend para Rinha 2025 - Node.js/TypeScript version",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/main.js",
+    "dev": "tsx src/main.ts",
+    "dev:watch": "tsx watch src/main.ts"
+  },
+  "dependencies": {
+    "@fastify/type-provider-typebox": "^4.0.0",
+    "@sinclair/typebox": "^0.32.7",
+    "axios": "^1.6.2",
+    "fastify": "^4.25.2",
+    "redis": "^4.6.11",
+    "undici": "^6.21.3",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.5",
+    "@types/uuid": "^9.0.7",
+    "tsx": "^4.6.2",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
