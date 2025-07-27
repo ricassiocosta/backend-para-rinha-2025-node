@@ -12,7 +12,6 @@
   "dependencies": {
     "@fastify/type-provider-typebox": "^4.0.0",
     "@sinclair/typebox": "^0.32.7",
-    "axios": "^1.6.2",
     "fastify": "^4.25.2",
     "redis": "^4.6.11",
     "undici": "^6.21.3",

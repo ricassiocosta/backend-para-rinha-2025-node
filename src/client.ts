@@ -1,4 +1,4 @@
-import axios, { AxiosInstance } from "axios";
+import { request } from "undici";
 import { getSettings } from "./config";
 import { redisClient } from "./storage";
 import { GatewayHealth, CacheData } from "./models";
@@ -10,26 +10,25 @@ const localCache: { cache: CacheData | null } = {
   cache: null,
 };
 
-const client: AxiosInstance = axios.create({
-  timeout: 5000,
-  headers: {
-    Connection: "keep-alive",
-  },
-});
-
 export async function getHealth(url: string): Promise<GatewayHealth> {
   try {
-    const resp = await client.get(`${url}/payments/service-health`, {
-      timeout: 5000,
+    const resp = await request(`${url}/payments/service-health`, {
+      method: "GET",
+      headersTimeout: 5000,
+      bodyTimeout: 5000,
+      headers: {
+        Connection: "keep-alive",
+      },
     });
 
-    if (resp.status !== 200) {
+    if (resp.statusCode !== 200) {
       return { failing: true, minResponseTime: 10_000 };
     }
 
-    return resp.data;
+    const data = (await resp.body.json()) as GatewayHealth;
+    return data;
   } catch (error) {
-    if (axios.isAxiosError(error) && error.code === "ECONNABORTED") {
+    if (error instanceof Error && error.name === "HeadersTimeoutError") {
       console.log(`[WARN] Timeout while checking health for ${url}`);
     }
     return { failing: true, minResponseTime: 10_000 };
@@ -49,8 +48,15 @@ export async function sendPayment(
   };
 
   try {
-    const r = await client.post(`${dest}/payments`, payload);
-    return r.status === 200;
+    const r = await request(`${dest}/payments`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Connection: "keep-alive",
+      },
+      body: JSON.stringify(payload),
+    });
+    return r.statusCode === 200;
   } catch (error) {
     return false;
   }
