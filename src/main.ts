@@ -5,7 +5,7 @@ import { consumeLoop, paymentsQueue } from "./queueWorker";
 import { getSummary, purgePayments } from "./storage";
 import { gatewayHealthCheckService } from "./healthCheck";
 
-const VERSION = "v0.10.1";
+const VERSION = "v0.1.0";
 
 const app = Fastify({
   logger: false,
