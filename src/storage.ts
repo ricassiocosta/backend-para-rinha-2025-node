@@ -4,6 +4,7 @@ import { PaymentSummary } from "./models";
 const redisClient: RedisClientType = createClient({
   socket: {
     path: "/var/run/redis/redis.sock",
+    tls: false,
   },
 });
 

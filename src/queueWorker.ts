@@ -3,6 +3,7 @@ import { savePayment } from "./storage";
 import { QueueItem } from "./models";
 
 const MAX_PARALLELISM = parseInt(process.env.MAX_PARALLELISM || "2");
+const MAX_ATTEMPTS = 5;
 
 class AsyncQueue<T> {
   private items: T[] = [];
@@ -14,7 +15,7 @@ class AsyncQueue<T> {
     this.maxSize = maxSize;
   }
 
-  async put(item: T): Promise<{ correlationId: string; amount: number }> {
+  async put(item: T): Promise<void> {
     if (this.items.length - this.head >= this.maxSize) {
       throw new Error("Queue is full");
     }
@@ -25,19 +26,18 @@ class AsyncQueue<T> {
     } else {
       this.items.push(item);
     }
-
-    return item as { correlationId: string; amount: number };
   }
 
   async get(): Promise<T> {
     if (this.head < this.items.length) {
       const item = this.items[this.head];
       this.head++;
-      // Reset array to avoid memory leak when it gets too big
+
       if (this.head > 10000 && this.head * 2 > this.items.length) {
         this.items = this.items.slice(this.head);
         this.head = 0;
       }
+
       return item;
     }
 
@@ -47,18 +47,24 @@ class AsyncQueue<T> {
   }
 }
 
-export const paymentsQueue = new AsyncQueue<QueueItem>(50000);
+export const paymentsQueue = new AsyncQueue<QueueItem & { attempts?: number }>(
+  50000
+);
 
 export async function addToQueue(cid: string, amount: number): Promise<void> {
-  const data = { correlationId: cid, amount: amount };
-  await paymentsQueue.put(data);
+  await paymentsQueue.put({ correlationId: cid, amount, attempts: 0 });
+}
+
+function delay(ms: number) {
+  return new Promise((res) => setTimeout(res, ms));
 }
 
 async function worker(workerId: number): Promise<void> {
   while (true) {
-    const requestedAt = new Date();
     try {
       const item = await paymentsQueue.get();
+      const requestedAt = new Date();
+      const attempts = item.attempts ?? 0;
 
       try {
         const [healthierGateway, gatewayName] = await getHealthierGateway();
@@ -69,19 +75,32 @@ async function worker(workerId: number): Promise<void> {
           item.amount,
           requestedAt
         );
-        if (!success) {
-          throw new Error(
-            `Failed to send payment for ${item.correlationId} to ${healthierGateway}`
-          );
-        }
+
+        if (!success) throw new Error("Payment failed");
 
         savePayment(item.correlationId, item.amount, gatewayName, requestedAt);
       } catch (e) {
-        console.log(`[ERRO] Worker ${workerId}: ${e}. Sending back to queue.`);
-        await paymentsQueue.put(item);
+        if (attempts + 1 >= MAX_ATTEMPTS) {
+          console.error(
+            `[FALHA PERMANENTE] Worker ${workerId}: ${
+              item.correlationId
+            } após ${attempts + 1} tentativas`
+          );
+          continue;
+        }
+
+        const backoff = Math.min(1000 * Math.pow(2, attempts), 15000);
+        console.warn(
+          `[RETRY] Worker ${workerId}: Tentativa ${attempts + 1} para ${
+            item.correlationId
+          }, tentando em ${backoff}ms`
+        );
+        await delay(backoff);
+        await paymentsQueue.put({ ...item, attempts: attempts + 1 });
       }
     } catch (e) {
-      console.log(`[ERRO] Worker ${workerId} ${e}`);
+      console.error(`[ERRO GERAL] Worker ${workerId}: ${e}`);
+      await delay(100);
     }
   }
 }

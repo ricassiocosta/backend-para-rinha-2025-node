@@ -10,10 +10,10 @@
     "dev:watch": "tsx watch src/main.ts"
   },
   "dependencies": {
-    "@fastify/type-provider-typebox": "^4.0.0",
+    "@fastify/type-provider-typebox": "^5.2.0",
     "@sinclair/typebox": "^0.32.7",
-    "fastify": "^4.25.2",
-    "redis": "^4.6.11",
+    "fastify": "^5.4.0",
+    "redis": "^5.6.1",
     "undici": "^6.21.3",
     "uuid": "^9.0.1"
   },
