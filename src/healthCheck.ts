@@ -1,8 +1,8 @@
-import { v4 as uuidv4 } from 'uuid';
-import { redisClient } from './storage';
-import { getSettings } from './config';
-import { getHealth } from './client';
-import { CacheData } from './models';
+import { v4 as uuidv4 } from "uuid";
+import { redisClient } from "./storage";
+import { getSettings } from "./config";
+import { getHealth } from "./client";
+import { CacheData } from "./models";
 
 const settings = getSettings();
 
@@ -28,9 +28,9 @@ class PaymentGatewayHealthService {
     try {
       const result = await this.redis.set(this.lockKey, this.instanceId, {
         NX: true,
-        PX: this.lockTtl
+        PX: this.lockTtl,
       });
-      return result === 'OK';
+      return result === "OK";
     } catch (error) {
       return false;
     }
@@ -74,7 +74,7 @@ class PaymentGatewayHealthService {
       try {
         const [defaultHealth, fallbackHealth] = await Promise.all([
           getHealth(settings.ppDefault),
-          getHealth(settings.ppFallback)
+          getHealth(settings.ppFallback),
         ]);
 
         const checkedAt = Date.now() / 1000;
@@ -86,7 +86,10 @@ class PaymentGatewayHealthService {
         } else if (defaultHealth.minResponseTime < 120) {
           cacheObj = { data: [settings.ppDefault, "default"], ts: checkedAt };
           await redisClient.set(CACHE_KEY, JSON.stringify(cacheObj));
-        } else if (!fallbackHealth.failing && fallbackHealth.minResponseTime < (defaultHealth.minResponseTime * 2)) {
+        } else if (
+          !fallbackHealth.failing &&
+          fallbackHealth.minResponseTime < defaultHealth.minResponseTime * 3
+        ) {
           cacheObj = { data: [settings.ppFallback, "fallback"], ts: checkedAt };
           await redisClient.set(CACHE_KEY, JSON.stringify(cacheObj));
         } else {
@@ -95,20 +98,20 @@ class PaymentGatewayHealthService {
         }
 
         await this.sleep(5000);
-        
+
         if (!(await this.isStillLeader())) {
           this.isLeader = false;
           break;
         }
       } catch (error) {
-        console.error('Error in health check loop:', error);
+        console.error("Error in health check loop:", error);
         await this.sleep(5000);
       }
     }
   }
 
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 

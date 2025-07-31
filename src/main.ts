@@ -5,7 +5,7 @@ import { consumeLoop, paymentsQueue } from "./queueWorker";
 import { getSummary, purgePayments } from "./storage";
 import { gatewayHealthCheckService } from "./healthCheck";
 
-const VERSION = "v0.1.0";
+const VERSION = "v0.1.2";
 
 const app = Fastify({
   logger: false,
@@ -21,23 +21,16 @@ app.post(
   {
     schema: {
       body: PaymentRequestSchema,
-      response: {
-        202: Type.Object({
-          correlationId: Type.String(),
-          amount: Type.Number(),
-        }),
-      },
     },
   },
   async (request, reply) => {
     const payment = request.body;
-    const result = await paymentsQueue.put({
+    paymentsQueue.put({
       correlationId: payment.correlationId,
       amount: payment.amount,
     });
 
-    reply.status(202);
-    return result;
+    return reply.status(202).send();
   }
 );
 
@@ -81,7 +74,7 @@ app.post(
   },
   async (request, reply) => {
     await purgePayments();
-    return { status: "payments purged" };
+    return reply.status(200).send();
   }
 );
 

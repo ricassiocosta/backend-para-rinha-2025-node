@@ -90,11 +90,6 @@ async function worker(workerId: number): Promise<void> {
         }
 
         const backoff = Math.min(1000 * Math.pow(2, attempts), 15000);
-        console.warn(
-          `[RETRY] Worker ${workerId}: Tentativa ${attempts + 1} para ${
-            item.correlationId
-          }, tentando em ${backoff}ms`
-        );
         await delay(backoff);
         await paymentsQueue.put({ ...item, attempts: attempts + 1 });
       }

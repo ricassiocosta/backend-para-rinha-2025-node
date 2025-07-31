@@ -20,7 +20,7 @@ services:
           memory: "48MB"
 
   backend-api-1: &api
-    image: ricassiocosta/rinha-backend-2025-node:v0.1.1
+    image: ricassiocosta/rinha-backend-2025-node:v0.1.2
     container_name: rinha-api-node-1
     restart: unless-stopped
     environment:
