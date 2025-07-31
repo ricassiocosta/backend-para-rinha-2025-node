@@ -5,7 +5,7 @@ import { consumeLoop, paymentsQueue } from "./queueWorker";
 import { getSummary, purgePayments } from "./storage";
 import { gatewayHealthCheckService } from "./healthCheck";
 
-const VERSION = "v0.1.3";
+const VERSION = "v0.1.4";
 
 const app = Fastify({
   logger: false,
@@ -44,7 +44,7 @@ app.get(
       }),
     },
   },
-  async (request, reply) => {
+  async (request, _) => {
     const { from, to } = request.query;
 
     let fromDate: Date | undefined;
@@ -72,7 +72,7 @@ app.post(
       },
     },
   },
-  async (request, reply) => {
+  async (_, reply) => {
     await purgePayments();
     return reply.status(200).send();
   }

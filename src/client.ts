@@ -14,8 +14,8 @@ export async function getHealth(url: string): Promise<GatewayHealth> {
   try {
     const resp = await request(`${url}/payments/service-health`, {
       method: "GET",
-      headersTimeout: 5000,
-      bodyTimeout: 5000,
+      bodyTimeout: 1_000,
+      headersTimeout: 1_000,
       headers: {
         Connection: "keep-alive",
       },
@@ -50,6 +50,8 @@ export async function sendPayment(
   try {
     const r = await request(`${dest}/payments`, {
       method: "POST",
+      bodyTimeout: 10_000,
+      headersTimeout: 10_000,
       headers: {
         "Content-Type": "application/json",
         Connection: "keep-alive",

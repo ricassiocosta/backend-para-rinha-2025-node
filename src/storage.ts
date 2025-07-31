@@ -48,25 +48,29 @@ export async function getSummary(
     maxScore
   );
 
-  const summary: PaymentSummary = {
-    default: { totalRequests: 0, totalAmount: 0.0 },
-    fallback: { totalRequests: 0, totalAmount: 0.0 },
-  };
+  const summary = payments.reduce(
+    (acc, json) => {
+      const { processor, amount } = JSON.parse(json) as {
+        processor: keyof PaymentSummary;
+        amount: number;
+      };
 
-  for (const paymentJson of payments) {
-    const p = JSON.parse(paymentJson);
-    const processor = p.processor as keyof PaymentSummary;
-    const amount = p.amount;
+      if (acc[processor]) {
+        acc[processor].totalRequests++;
+        acc[processor].totalAmount += amount;
+      }
 
-    if (summary[processor]) {
-      summary[processor].totalRequests += 1;
-      summary[processor].totalAmount += amount;
-    }
-  }
+      return acc;
+    },
+    {
+      default: { totalRequests: 0, totalAmount: 0 },
+      fallback: { totalRequests: 0, totalAmount: 0 },
+    } as PaymentSummary
+  );
 
-  for (const key of Object.keys(summary) as Array<keyof PaymentSummary>) {
+  (["default", "fallback"] as const).forEach((key) => {
     summary[key].totalAmount = Math.round(summary[key].totalAmount * 10) / 10;
-  }
+  });
 
   return summary;
 }
