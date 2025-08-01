@@ -20,13 +20,13 @@ services:
           memory: "48MB"
 
   backend-api-1: &api
-    image: ricassiocosta/rinha-backend-2025-node:v0.1.4
+    image: ricassiocosta/rinha-backend-2025-node:v0.1.5
     container_name: rinha-api-node-1
     restart: unless-stopped
     environment:
       - PAYMENT_PROCESSOR_URL_DEFAULT=http://payment-processor-default:8080
       - PAYMENT_PROCESSOR_URL_FALLBACK=http://payment-processor-fallback:8080
-      - MAX_PARALLELISM=8
+      - MAX_PARALLELISM=5
     depends_on:
       - redis
     volumes:

@@ -1,5 +1,6 @@
 import { createClient, RedisClientType } from "redis";
 import { PaymentSummary } from "./models";
+import fastJson from "fast-json-stringify";
 
 const redisClient: RedisClientType = createClient({
   socket: {
@@ -12,6 +13,25 @@ redisClient.connect().catch(console.error);
 
 const ZSET_KEY = "payments_by_date";
 
+const stringify = fastJson({
+  title: "Payment",
+  type: "object",
+  properties: {
+    correlation_id: {
+      type: "string",
+    },
+    amount: {
+      type: "number",
+    },
+    processor: {
+      type: "string",
+    },
+    requested_at: {
+      type: "number",
+    },
+  },
+});
+
 export function savePayment(
   cid: string,
   amount: number,
@@ -20,7 +40,7 @@ export function savePayment(
 ): void {
   const timestamp = requestedAt.getTime() / 1000;
 
-  const paymentJson = JSON.stringify({
+  const paymentJson = stringify({
     correlation_id: cid,
     amount: amount,
     processor: processor,
@@ -48,29 +68,30 @@ export async function getSummary(
     maxScore
   );
 
-  const summary = payments.reduce(
-    (acc, json) => {
-      const { processor, amount } = JSON.parse(json) as {
-        processor: keyof PaymentSummary;
-        amount: number;
-      };
+  const summary: PaymentSummary = {
+    default: { totalRequests: 0, totalAmount: 0.0 },
+    fallback: { totalRequests: 0, totalAmount: 0.0 },
+  };
 
-      if (acc[processor]) {
-        acc[processor].totalRequests++;
-        acc[processor].totalAmount += amount;
+  for (const paymentJson of payments) {
+    const processorMatch = paymentJson.match(/"processor":"([^"]+)"/);
+    const amountMatch = paymentJson.match(/"amount":([0-9]+(?:\.[0-9]+)?)/);
+
+    if (processorMatch && amountMatch) {
+      const processor = processorMatch[1] as keyof PaymentSummary;
+      const amount = parseFloat(amountMatch[1]);
+
+      if (summary[processor]) {
+        summary[processor].totalRequests += 1;
+        summary[processor].totalAmount += amount;
       }
+    }
+  }
 
-      return acc;
-    },
-    {
-      default: { totalRequests: 0, totalAmount: 0 },
-      fallback: { totalRequests: 0, totalAmount: 0 },
-    } as PaymentSummary
-  );
-
-  (["default", "fallback"] as const).forEach((key) => {
-    summary[key].totalAmount = Math.round(summary[key].totalAmount * 10) / 10;
-  });
+  summary.default.totalAmount =
+    Math.round(summary.default.totalAmount * 10) / 10;
+  summary.fallback.totalAmount =
+    Math.round(summary.fallback.totalAmount * 10) / 10;
 
   return summary;
 }

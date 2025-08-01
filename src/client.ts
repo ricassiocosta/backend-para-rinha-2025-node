@@ -2,6 +2,7 @@ import { request } from "undici";
 import { getSettings } from "./config";
 import { redisClient } from "./storage";
 import { GatewayHealth, CacheData } from "./models";
+import fastJson from "fast-json-stringify";
 
 const settings = getSettings();
 const CACHE_KEY = "gateway_status";
@@ -9,6 +10,22 @@ const CACHE_KEY = "gateway_status";
 const localCache: { cache: CacheData | null } = {
   cache: null,
 };
+
+const stringify = fastJson({
+  title: "Payment",
+  type: "object",
+  properties: {
+    correlationId: {
+      type: "string",
+    },
+    amount: {
+      type: "number",
+    },
+    requestedAt: {
+      type: "string",
+    },
+  },
+});
 
 export async function getHealth(url: string): Promise<GatewayHealth> {
   try {
@@ -56,7 +73,7 @@ export async function sendPayment(
         "Content-Type": "application/json",
         Connection: "keep-alive",
       },
-      body: JSON.stringify(payload),
+      body: stringify(payload),
     });
     return r.statusCode === 200;
   } catch (error) {
