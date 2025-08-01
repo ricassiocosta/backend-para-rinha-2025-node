@@ -5,10 +5,15 @@ import { consumeLoop, paymentsQueue } from "./queueWorker";
 import { getSummary, purgePayments } from "./storage";
 import { gatewayHealthCheckService } from "./healthCheck";
 
-const VERSION = "v0.1.5";
+const VERSION = "v0.1.6";
 
 const app = Fastify({
   logger: false,
+  disableRequestLogging: true,
+  ignoreTrailingSlash: true,
+  maxParamLength: 100,
+  bodyLimit: 1048576, // 1MB
+  keepAliveTimeout: 50000,
 }).withTypeProvider<TypeBoxTypeProvider>();
 
 const PaymentRequestSchema = Type.Object({
@@ -23,14 +28,9 @@ app.post(
       body: PaymentRequestSchema,
     },
   },
-  async (request, reply) => {
-    const payment = request.body;
-    paymentsQueue.put({
-      correlationId: payment.correlationId,
-      amount: payment.amount,
-    });
-
-    return reply.status(202).send();
+  (request, reply) => {
+    paymentsQueue.put(request.body);
+    reply.status(202).send();
   }
 );
 
@@ -44,7 +44,7 @@ app.get(
       }),
     },
   },
-  async (request, _) => {
+  async (request, reply) => {
     const { from, to } = request.query;
 
     let fromDate: Date | undefined;
@@ -57,7 +57,8 @@ app.get(
       toDate = new Date(to);
     }
 
-    return await getSummary(fromDate, toDate);
+    const summary = await getSummary(fromDate, toDate);
+    reply.status(200).send(summary);
   }
 );
 
@@ -74,7 +75,7 @@ app.post(
   },
   async (_, reply) => {
     await purgePayments();
-    return reply.status(200).send();
+    reply.status(200).send();
   }
 );
 
@@ -82,14 +83,14 @@ async function main(): Promise<void> {
   console.log(`API version ${VERSION} started`);
 
   try {
-    const serverPromise = app.listen({
+    await app.listen({
       port: 9999,
       host: "0.0.0.0",
     });
 
     const consumePromise = consumeLoop();
     const healthCheckPromise = gatewayHealthCheckService();
-    await Promise.all([serverPromise, consumePromise, healthCheckPromise]);
+    await Promise.all([consumePromise, healthCheckPromise]);
   } catch (err) {
     app.log.error(err);
     process.exit(1);

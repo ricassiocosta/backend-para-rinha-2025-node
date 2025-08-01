@@ -1,6 +1,6 @@
 {
   "name": "backend-para-rinha-2025-node",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Backend para Rinha 2025 - Node.js/TypeScript version",
   "main": "dist/main.js",
   "scripts": {
